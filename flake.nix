@@ -16,37 +16,20 @@
         WATCH_DIR="${directoryToWatch}"
         RUN_COMMAND="ags run ${mainFile}"
 
-        # Fonction pour surveiller et exécuter
-        monitor_changes() {
-          if ! command -v inotifywait &> /dev/null; then
-              echo "Error: inotifywait is not installed. Ensure it's in your buildInputs."
-              return 1
+        start_ags() {
+          $RUN_COMMAND & AGS_PID=$!
+        }
+
+        stop_ags() {
+          if [ ! -z "$AGS_PID" ]; then
+            pkill -P $AGS_PID
           fi
+        }
 
-          echo "Monitoring changes in $WATCH_DIR. Press Ctrl+C to stop."
-
-          # Fonction pour arrêter le processus existant
-          stop_previous_process() {
-            if [ $AGS_PID -ne 0 ]; then
-              echo "Stopping previous process with PID $AGS_PID"
-              kill $AGS_PID 2>/dev/null || true
-              wait $AGS_PID 2>/dev/null || true
-              AGS_PID=0
-            fi
-          }
-
-          # Lancer la commande pour la première fois
-          echo "Running initial command: $RUN_COMMAND"
-          $RUN_COMMAND &
-          AGS_PID=$!
-
-          # Boucle pour surveiller les changements
-          while true; do
-              inotifywait -e modify,create,delete -r "$WATCH_DIR" --exclude '(\.git|node_modules|\.swp|\.tmp)' && \
-              echo "Change detected, restarting command: $RUN_COMMAND" && \
-              stop_previous_process && \
-              $RUN_COMMAND &
-              AGS_PID=$!
+        run_watch() {
+          start_ags
+          inotifywait -m -r -e create,modify,delete . | while read events; do
+            stop_ags && start_ags
           done
         }
       '';
