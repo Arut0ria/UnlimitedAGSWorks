@@ -33,6 +33,11 @@
           done
         }
       '';
+
+      libraries = with ags.packages.${system}; [
+        cava
+        apps
+      ];
     in
     {
       packages.${system}.default = ags.lib.bundle {
@@ -45,7 +50,7 @@
         extraPackages = [
           # ags.packages.${system}.battery
           # pkgs.fzf
-        ];
+        ] ++ libraries;
       };
 
       devShells.${system}.default = pkgs.mkShell {
@@ -54,7 +59,7 @@
           (ags.packages.${system}.default.override {
             extraPackages = [
               # cherry pick packages
-            ];
+            ] ++ libraries;
           })
           pkgs.inotify-tools
         ];
